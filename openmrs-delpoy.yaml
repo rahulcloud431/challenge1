@@ -1,0 +1,54 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openmrs-deploy
+spec:
+  replicas: 3
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: openmrs-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      name: openmrs-pod
+      labels:
+        app: openmrs-app
+        ver: "1.0"
+    spec:
+      containers:
+        - name: openmrs-container
+          image: rahulcloud431/openmrs:1.0
+          env:
+            - name: DB_HOST
+              value: 'openmrs-mysql'
+            - name: DB_DATABASE
+              value: 'openmrs'
+            - name: DB_USERNAME
+              value: 'openmrs'
+            - name: DB_PASSWORD
+              value: 'Admin123'
+            - name: DB_CREATE_TABLES
+              value: 'true'
+            - name: DB_AUTO_UPDATE
+              value: 'true'
+            - name: MODULE_WEB_ADMIN
+              value: 'true'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openmrs-svc
+spec:
+  selector:
+    app: openmrs-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: LoadBalancer

@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: azure-managed-disk
+  labels:
+    type: local
+spec:
+  storageClassName: managed-premium
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: azure-managed-disk
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: managed-premium
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openmrs-mysql
+spec:
+  replicas: 1
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: mysql-app
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      name: mysql-pod
+      labels:
+        app: mysql-app
+        ver: "0.1"
+    spec:
+      volumes:
+        - name: myvolume
+          persistentVolumeClaim:
+            claimName: azure-managed-disk 
+      containers:
+        - name: mysql-app
+          image: mysql:5.7
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: "myvolume"
+          ports:
+            - containerPort: 3306
+              name: dbport
+              protocol: TCP
+          env:
+            - name: MYSQL_DATABASE
+              value: 'openmrs'
+            - name: MYSQL_USER
+              value: 'openmrs'
+            - name: MYSQL_PASSWORD
+              value: 'Admin123'
+            - name: MYSQL_ROOT_PASSWORD
+              value: 'Admin123'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openmrs-mysql
+  labels:
+    app: mysql-app
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: mysql-app
+    tier: mysql
+  clusterIP: None                    
